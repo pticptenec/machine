@@ -1,13 +1,31 @@
 package machine
 
 import (
-	"errors"
 	"fmt"
-	"strings"
 )
 
+type ErrTank struct {
+	slug string
+}
+
+func (et ErrTank) Error() string {
+	return et.slug
+}
+
+var (
+	ErrTankNotDefined = ErrTank{"not defined"}
+	ErrTankNotReady   = ErrTank{"not ready"}
+)
+
+func NewErrTank(s string) ErrTank {
+	switch s {
+	case ErrTankNotReady.slug:
+		return ErrTankNotReady
+	}
+	return ErrTankNotDefined
+}
+
 func main() {
-	// TODO 1: add errors as set
 	// TODO 2: go routine loop
 }
 
@@ -15,19 +33,6 @@ type Config struct {
 	Water int
 	Beans int
 	Grind int
-}
-
-const (
-	waterTank = "water"
-	beansTank = "beans"
-	grindTank = "grind"
-)
-
-var ErrTank = func(tank string) error {
-	return errors.New(
-		fmt.Sprintf("%s %s", strings.Title(tank),
-			"not valid state"),
-	)
 }
 
 type Machine struct {
@@ -88,7 +93,7 @@ func (gt GrindTank) Status() bool {
 
 func (gt GrindTank) Do(grind int) error {
 	if gt.Check() == false {
-		return ErrTank(grindTank)
+		return ErrTankNotReady
 	}
 	gt.grind += grind
 	gt.Check()
@@ -116,7 +121,7 @@ func (bt BeansTank) Status() bool {
 
 func (bt BeansTank) Do(quantity int) error {
 	if bt.Check() == false {
-		return ErrTank(beansTank)
+		return ErrTankNotReady
 	}
 	bt.beans -= quantity
 	_ = bt.Check()
@@ -144,7 +149,7 @@ func (wt WaterTank) Status() bool {
 
 func (wt WaterTank) Do(quantity int) error {
 	if wt.Check() == false {
-		return ErrTank(waterTank)
+		return ErrTankNotReady
 	}
 	wt.water -= quantity
 	_ = wt.Check()
