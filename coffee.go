@@ -1,7 +1,10 @@
 package machine
 
 import (
+	"bufio"
 	"fmt"
+	"os"
+	"strconv"
 )
 
 type ErrTank struct {
@@ -26,20 +29,59 @@ func NewErrTank(s string) ErrTank {
 }
 
 func main() {
-	// TODO 2: go routine loop
+	commands := make(chan int)
+	reader := bufio.NewReader(os.Stdin)
+	go ListenCommands(commands)
+	for {
+		fmt.Print(">>>")
+		str, _ := reader.ReadString('\n')
+		num, err := strconv.Atoi(str)
+		if err != nil {
+			continue
+		}
+		commands <- num
+	}
+}
+
+func ListenCommands(commands chan int) {
+	for {
+		fmt.Println("<<<", <-commands)
+	}
 }
 
 type Config struct {
-	Water int
-	Beans int
-	Grind int
+	Water       int
+	Beans       int
+	Grind       int
+	WaterHandle int
+	BeansHandle int
 }
 
 type Machine struct {
-	waterTank WaterTank
-	beansTank BeansTank
-	grindTank GrindTank
-	Display   RunLine
+	ready       bool
+	waterTank   WaterTank
+	beansTank   BeansTank
+	grindTank   GrindTank
+	waterHandle CircullarHandle
+	beansHandle CircullarHandle
+	Display     RunLine
+}
+
+type CircullarHandle struct {
+	value int
+}
+
+const CircullarHandleMax = 10
+const CircullarHandleMin = 1
+
+func (ch CircullarHandle) Set(qty int) {
+	if qty < CircullarHandleMax && qty > CircullarHandleMin {
+		ch.value = qty
+	}
+}
+
+func (ch CircullarHandle) Get() int {
+	return ch.value
 }
 
 func NewMachine(c Config) *Machine {
@@ -48,10 +90,15 @@ func NewMachine(c Config) *Machine {
 	bt := BeansTank{beans: c.Beans, lamp: &lamps[1]}
 	gt := GrindTank{grind: c.Grind, lamp: &lamps[2]}
 
+	wh := CircullarHandle{c.WaterHandle}
+	bh := CircullarHandle{c.BeansHandle}
+
 	m := &Machine{
-		waterTank: wt,
-		beansTank: bt,
-		grindTank: gt,
+		waterTank:   wt,
+		beansTank:   bt,
+		grindTank:   gt,
+		waterHandle: wh,
+		beansHandle: bh,
 	}
 	return m
 }
@@ -168,7 +215,7 @@ func (l *Lamp) Off() {
 	l.on = false
 }
 
-type Device interface {
+type Tank interface {
 	Check() bool
 	Do(int) error
 	Status() bool
@@ -176,7 +223,7 @@ type Device interface {
 
 func (m *Machine) On() {
 	m.Display.Hello()
-	devices := [...]Device{m.beansTank, m.waterTank, m.grindTank}
+	devices := [...]Tank{m.beansTank, m.waterTank, m.grindTank}
 	var ready bool = false
 	for _, d := range devices {
 		ready = d.Check()
@@ -184,6 +231,7 @@ func (m *Machine) On() {
 	if !ready {
 		m.Display.NotReady()
 	} else {
+		m.ready = true
 		m.Display.Ready(m.waterTank.Status(), m.beansTank.Status())
 	}
 }
@@ -204,3 +252,30 @@ var (
 	OffCommand = Command{1}
 	OnCommand  = Command{2}
 )
+
+func (m *Machine) MakeEspresso() {
+	if !m.ready {
+		return
+	}
+
+	done := make(chan struct{})
+	go func() {
+		m.waterTank.Do(m.waterHandle.Get())
+		done <- struct{}{}
+	}()
+	go func() {
+		m.beansTank.Do(m.beansHandle.Get())
+		done <- struct{}{}
+	}()
+	go func() {
+		m.grindTank.Do(m.beansHandle.Get())
+		done <- struct{}{}
+	}()
+	var i int
+	for range done {
+		i++
+		if i == 2 {
+			fmt.Println("Done!")
+		}
+	}
+}
