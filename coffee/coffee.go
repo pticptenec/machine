@@ -1,9 +1,5 @@
 package coffee
 
-import (
-	"fmt"
-)
-
 type ErrTank struct {
 	slug string
 }
@@ -61,7 +57,6 @@ type Machine struct {
 	grindTank   GrindTank
 	waterHandle CircullarHandle
 	beansHandle CircullarHandle
-	Display     RunLine
 }
 
 type CircullarHandle struct {
@@ -98,22 +93,6 @@ func NewMachine(c Config) *Machine {
 		beansHandle: bh,
 	}
 	return m
-}
-
-type RunLine struct {
-	slug string
-}
-
-func (r *RunLine) Hello() {
-	r.slug = fmt.Sprintf("Coffee?\n")
-}
-
-func (r *RunLine) Ready(water, beans bool) {
-	r.slug = fmt.Sprintf("Status:\nW: %t, B: %t\n", water, beans)
-}
-
-func (r *RunLine) NotReady() {
-	return
 }
 
 type GrindTank struct {
@@ -219,18 +198,12 @@ type Tank interface {
 }
 
 func (m *Machine) On() {
-	m.Display.Hello()
 	devices := [...]Tank{m.beansTank, m.waterTank, m.grindTank}
 	var ready bool = false
 	for _, d := range devices {
 		ready = d.Check()
 	}
-	if !ready {
-		m.Display.NotReady()
-	} else {
-		m.ready = true
-		m.Display.Ready(m.waterTank.Status(), m.beansTank.Status())
-	}
+	m.ready = ready
 }
 
 func (m *Machine) Off() {
@@ -249,30 +222,3 @@ var (
 	OffCommand = Command{1}
 	OnCommand  = Command{2}
 )
-
-func (m *Machine) MakeEspresso() {
-	if !m.ready {
-		return
-	}
-
-	done := make(chan struct{})
-	go func() {
-		m.waterTank.Do(m.waterHandle.Get())
-		done <- struct{}{}
-	}()
-	go func() {
-		m.beansTank.Do(m.beansHandle.Get())
-		done <- struct{}{}
-	}()
-	go func() {
-		m.grindTank.Do(m.beansHandle.Get())
-		done <- struct{}{}
-	}()
-	var i int
-	for range done {
-		i++
-		if i == 2 {
-			fmt.Println("Done!")
-		}
-	}
-}
