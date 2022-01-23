@@ -1,10 +1,7 @@
 package coffee
 
 import (
-	"bufio"
 	"fmt"
-	"os"
-	"strconv"
 )
 
 type ErrTank struct {
@@ -28,26 +25,26 @@ func NewErrTank(s string) ErrTank {
 	return ErrTankNotDefined
 }
 
-func main() {
-	commands := make(chan int)
-	reader := bufio.NewReader(os.Stdin)
-	go ListenCommands(commands)
-	for {
-		fmt.Print(">>>")
-		str, _ := reader.ReadString('\n')
-		num, err := strconv.Atoi(str)
-		if err != nil {
-			continue
-		}
-		commands <- num
-	}
-}
+// func main() {
+// 	commands := make(chan int)
+// 	reader := bufio.NewReader(os.Stdin)
+// 	go ListenCommands(commands)
+// 	for {
+// 		fmt.Print(">>>")
+// 		str, _ := reader.ReadString('\n')
+// 		num, err := strconv.Atoi(str)
+// 		if err != nil {
+// 			continue
+// 		}
+// 		commands <- num
+// 	}
+// }
 
-func ListenCommands(commands chan int) {
-	for {
-		fmt.Println("<<<", <-commands)
-	}
-}
+// func ListenCommands(commands chan int) {
+// 	for {
+// 		fmt.Println("<<<", <-commands)
+// 	}
+// }
 
 type Config struct {
 	Water       int
@@ -74,7 +71,7 @@ type CircullarHandle struct {
 const CircullarHandleMax = 10
 const CircullarHandleMin = 1
 
-func (ch CircullarHandle) Set(qty int) {
+func (ch *CircullarHandle) Set(qty int) {
 	if qty < CircullarHandleMax && qty > CircullarHandleMin {
 		ch.value = qty
 	}
