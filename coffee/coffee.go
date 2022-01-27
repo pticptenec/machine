@@ -1,5 +1,7 @@
 package coffee
 
+import "fmt"
+
 type ErrTank struct {
 	slug string
 }
@@ -123,6 +125,10 @@ func (gt GrindTank) Do(grind int) error {
 	return nil
 }
 
+func (gt GrindTank) Off() {
+	gt.lamp.Off()
+}
+
 type BeansTank struct {
 	lamp  *Lamp
 	beans int
@@ -149,6 +155,10 @@ func (bt BeansTank) Do(quantity int) error {
 	bt.beans -= quantity
 	_ = bt.Check()
 	return nil
+}
+
+func (bt BeansTank) Off() {
+	bt.lamp.Off()
 }
 
 type WaterTank struct {
@@ -179,6 +189,10 @@ func (wt WaterTank) Do(quantity int) error {
 	return nil
 }
 
+func (wt WaterTank) Off() {
+	wt.lamp.Off()
+}
+
 type Lamp struct {
 	on bool
 }
@@ -195,6 +209,7 @@ type Tank interface {
 	Check() bool
 	Do(int) error
 	Status() bool
+	Off()
 }
 
 func (m *Machine) On() {
@@ -207,7 +222,11 @@ func (m *Machine) On() {
 }
 
 func (m *Machine) Off() {
-	panic(OffCommand)
+	devices := [...]Tank{m.beansTank, m.waterTank, m.grindTank}
+	for _, d := range devices {
+		d.Off()
+	}
+	m.ready = false
 }
 
 type Command struct {
@@ -222,3 +241,14 @@ var (
 	OffCommand = Command{1}
 	OnCommand  = Command{2}
 )
+
+type Coffee struct {
+	beans int
+	water int
+	grind int
+}
+
+func (c Coffee) String() string {
+	return fmt.Sprintf("b: %d, w: %d, g: %d coffee",
+		c.beans, c.water, c.grind)
+}
