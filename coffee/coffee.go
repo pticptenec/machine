@@ -252,3 +252,61 @@ func (c Coffee) String() string {
 	return fmt.Sprintf("b: %d, w: %d, g: %d coffee",
 		c.beans, c.water, c.grind)
 }
+
+func NewMachine(c Config) {
+	lamps := [3]Lamp{{}, {}, {}}
+	wt := WaterTank{water: c.Water, lamp: &lamps[0]}
+	bt := BeansTank{beans: c.Beans, lamp: &lamps[1]}
+	gt := GrindTank{grind: c.Grind, lamp: &lamps[2]}
+
+	wh := CircullarHandle{c.WaterHandle}
+	bh := CircullarHandle{c.BeansHandle}
+
+	m := &Machine{
+		waterTank:   wt,
+		beansTank:   bt,
+		grindTank:   gt,
+		waterHandle: wh,
+		beansHandle: bh,
+	}
+	return m
+}
+
+type Handle interface {
+	Set(int)
+	Get() int
+}
+
+type Light interface {
+	On()
+	Off()
+}
+
+type DoesAction interface {
+	Do(int)
+	Check() bool
+}
+
+func (m *Machine) On() {
+	var ready bool = true
+	for _, d := range m.devices {
+		ready = ready && d.Check()
+	}
+	m.ready = ready
+}
+
+func (m *Machine) Off() {
+	for _, l := range m.lamps {
+		l.Off()
+	}
+	m.ready = false
+}
+
+func (m *Machine) Espresso() {
+	b := m.beansHandle.Get()
+	w := m.waterHandle.Get()
+
+	for _, d := m.devices {
+		go d.Do()
+	}
+}
