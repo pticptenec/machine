@@ -71,6 +71,10 @@ func TestOnMachineChecksDone(t *testing.T) {
 			t.Errorf("wrong Check command")
 		}
 	}
+
+	if m.ready != true {
+		t.Errorf("machine not ready")
+	}
 }
 
 func TestOnMachineChecksDoneLampsOn(t *testing.T) {
@@ -91,5 +95,8 @@ func TestOnMachineChecksDoneLampsOn(t *testing.T) {
 		if l != true {
 			t.Errorf("%d wrong Check command", i)
 		}
+	}
+	if m.ready != false {
+		t.Errorf("machine not ready")
 	}
 }
