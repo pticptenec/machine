@@ -38,7 +38,7 @@ func TestNewMachine(t *testing.T) {
 }
 
 func TestCircullarHandle(t *testing.T) {
-	ch := CircullarHandle{5}
+	ch := circullarHandle{5}
 	if ch.Get() != 5 {
 		t.Errorf("wrong Get Method: %v", ch)
 	}
@@ -99,4 +99,19 @@ func TestOnMachineChecksDoneLampsOn(t *testing.T) {
 	if m.ready != false {
 		t.Errorf("machine not ready")
 	}
+}
+
+func TestMakeEspresso(t *testing.T) {
+	c = Config{
+		Water: 50,
+		Beans: 50,
+		Grind: 50,
+	}
+
+	m := NewMachine(c)
+	m.SetWaterHandle(50)
+	m.SetGrindHandle(50)
+	m.On()
+	cof := m.Espresso()
+
 }
