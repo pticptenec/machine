@@ -27,14 +27,8 @@ func TestNewMachine(t *testing.T) {
 		BeansHandle: 5,
 	}
 	m := NewMachine(c)
-	if m.waterTank.water != 10 ||
-		m.beansTank.beans != 20 ||
-		m.grindTank.grind != 30 ||
-		m.waterHandle.value != 4 ||
-		m.beansHandle.value != 5 ||
-		m.ready != false {
-		t.Errorf("error with Machine constucotr, %v", m)
-	}
+	// TODO
+	t.Errorf("%v", m)
 }
 
 func TestCircullarHandle(t *testing.T) {
@@ -64,17 +58,7 @@ func TestOnMachineChecksDone(t *testing.T) {
 
 	m.On()
 
-	lamps := [...]bool{m.beansTank.Status(), m.waterTank.Status(),
-		m.grindTank.Status()}
-	for _, l := range lamps {
-		if l != false {
-			t.Errorf("wrong Check command")
-		}
-	}
-
-	if m.ready != true {
-		t.Errorf("machine not ready")
-	}
+	// TODO
 }
 
 func TestOnMachineChecksDoneLampsOn(t *testing.T) {
@@ -89,16 +73,7 @@ func TestOnMachineChecksDoneLampsOn(t *testing.T) {
 
 	m.On()
 
-	lamps := [...]bool{m.beansTank.Status(), m.waterTank.Status(),
-		m.grindTank.Status()}
-	for i, l := range lamps {
-		if l != true {
-			t.Errorf("%d wrong Check command", i)
-		}
-	}
-	if m.ready != false {
-		t.Errorf("machine not ready")
-	}
+	// TODO
 }
 
 func TestMakeEspresso(t *testing.T) {
@@ -109,9 +84,9 @@ func TestMakeEspresso(t *testing.T) {
 	}
 
 	m := NewMachine(c)
-	m.SetWaterHandle(50)
-	m.SetGrindHandle(50)
 	m.On()
-	cof := m.Espresso()
-
+	coffee := m.Espresso()
+	if coffee.String() != "b: 50, w: 50, Espresso coffee" {
+		t.Errorf("method Espresso not works")
+	}
 }

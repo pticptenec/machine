@@ -20,7 +20,7 @@ type light interface {
 }
 
 type doesAction interface {
-	Do(int)
+	Do(int) error
 	Check() bool
 }
 
@@ -43,9 +43,9 @@ const (
 )
 
 type Machine struct {
-	ready       bool
-	lamps [3]*lamp
-	tanks map[int]doesAction
+	ready   bool
+	lamps   [3]*lamp
+	tanks   map[int]doesAction
 	handles map[int]handle
 }
 
@@ -73,9 +73,9 @@ type lamp struct {
 }
 
 type Coffee struct {
-	beans int
-	water int
-	grind int
+	Beans int
+	Water int
+	Name  string
 }
 
 // 3. errors
@@ -110,20 +110,20 @@ func NewMachine(c Config) *Machine {
 	lamps := [...]*lamp{&lamp{}, &lamp{}, &lamp{}}
 
 	tanks := map[int]doesAction{
-		grindTankKey: grindTank{lamp: lamps[0], grind: c.Grind},
-		beansTankKey: beansTank{lamp: lamps[1], beans: c.Beans},
-		waterTankKey: waterTank{lamp: lamps[2], water: c.Water},
+		grindTankKey: &grindTank{lamp: lamps[0], grind: c.Grind},
+		beansTankKey: &beansTank{lamp: lamps[1], beans: c.Beans},
+		waterTankKey: &waterTank{lamp: lamps[2], water: c.Water},
 	}
 
 	handles := map[int]handle{
-		beansHandleKey: circullarHandle{c.BeansHandle},
-		waterHandleKey: circullarHandle{c.WaterHandle},
+		beansHandleKey: &circullarHandle{c.BeansHandle},
+		waterHandleKey: &circullarHandle{c.WaterHandle},
 	}
 
 	return &Machine{
-		ready: false,
-		lamps: lamps,
-		tanks: tanks,
+		ready:   false,
+		lamps:   lamps,
+		tanks:   tanks,
 		handles: handles,
 	}
 }
@@ -143,22 +143,55 @@ func (m *Machine) Off() {
 	m.ready = false
 }
 
-func (m *Machine) Espresso() (*Coffee, error) {
-	if m.ready == false {
-		return nil, ErrTankNotReady
-	}
-
-	
-
-	return Coffee{
-		Beans: m.beans,
-		Water: m.water,
-		Name: "espresso"
-	}
+func (m *Machine) Espresso() *Coffee {
+	const espressoMult = 1
+	return m.makeCoffee(espressoMult)
 }
 
-func (m *Machine) Lungo() Coffee {
+func (m *Machine) Lungo() *Coffee {
+	const lungoMult = 2
+	return m.makeCoffee(lungoMult)
+}
 
+func (m *Machine) makeCoffee(espressoOrLungo int) *Coffee {
+	if m == nil || m.ready == false {
+		return nil
+	}
+
+	// TODO bug here
+	var beans int = m.handles[beansHandleKey].Get() * espressoOrLungo
+	var water int = m.handles[waterHandleKey].Get()
+
+	m.ready = false
+	isReady := make(chan bool, len(m.tanks))
+	go func() {
+		m.tanks[beansTankKey].Do(beans)
+		isReady <- true
+	}()
+	go func() {
+		m.tanks[waterTankKey].Do(water)
+		isReady <- true
+	}()
+	// defer reverse order
+	defer func() {
+		var flag bool
+		flag = <-isReady
+		flag = <-isReady
+		flag = <-isReady
+		if flag == true {
+			m.On()
+		}
+	}()
+	defer func() {
+		go m.tanks[grindTankKey].Do(beans)
+		isReady <- true
+	}()
+
+	return &Coffee{
+		Beans: beans,
+		Water: water,
+		Name:  "espresso",
+	}
 }
 
 // 4.1 handle
@@ -200,7 +233,7 @@ func (gt grindTank) Do(grind int) error {
 
 const BeansTankMin = 10
 
-func (bt BeansTank) Check() bool {
+func (bt beansTank) Check() bool {
 	if bt.beans < BeansTankMin {
 		bt.lamp.On()
 		return false
@@ -208,7 +241,7 @@ func (bt BeansTank) Check() bool {
 	return true
 }
 
-func (bt BeansTank) Do(quantity int) error {
+func (bt beansTank) Do(quantity int) error {
 	if bt.Check() == false {
 		return ErrTankNotReady
 	}
@@ -221,7 +254,7 @@ func (bt BeansTank) Do(quantity int) error {
 
 const WaterTankMin = 10
 
-func (wt WaterTank) Check() bool {
+func (wt waterTank) Check() bool {
 	if wt.water < WaterTankMin {
 		wt.lamp.On()
 		return false
@@ -229,7 +262,7 @@ func (wt WaterTank) Check() bool {
 	return true
 }
 
-func (wt WaterTank) Do(quantity int) error {
+func (wt waterTank) Do(quantity int) error {
 	if wt.Check() == false {
 		return ErrTankNotReady
 	}
@@ -238,11 +271,11 @@ func (wt WaterTank) Do(quantity int) error {
 	return nil
 }
 
-func (l *Lamp) On() {
+func (l *lamp) On() {
 	l.on = true
 }
 
-func (l *Lamp) Off() {
+func (l *lamp) Off() {
 	l.on = false
 }
 
