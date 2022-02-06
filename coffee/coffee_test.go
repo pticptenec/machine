@@ -296,6 +296,6 @@ func TestMakeLungo(t *testing.T) {
 	m.On()
 	coffee := m.Lungo()
 	if coffee != nil && coffee.String() != "b: 7, w: 14, name: Lungo coffee" {
-		t.Errorf("method Espresso not works: %v", coffee)
+		t.Errorf("method Lungo not works: %v", coffee)
 	}
 }
