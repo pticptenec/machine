@@ -123,20 +123,74 @@ func TestWaterTank(t *testing.T) {
 	}
 }
 
+func TestLamp(t *testing.T) {
+	l := &lamp{}
+	l.On()
+	if l.on != true {
+		t.Errorf("wrong lamp On methond")
+	}
+	l.Off()
+	if l.on != false {
+		t.Errorf("wrong lamp Off method")
+	}
+}
+
+func TestCoffee(t *testing.T) {
+	c := Coffee{Beans: 10, Water: 20, Name: "Lungo"}
+	if s := c.String(); s != "b: 10, w: 20, name: Lungo coffee" {
+		t.Errorf("wrong Coffee String method: %s", s)
+	}
+}
+
 var c Config
 
 func TestNewMachine(t *testing.T) {
-
 	c = Config{
-		Water:       10,
+		Water:       50,
 		Beans:       20,
 		Grind:       30,
 		WaterHandle: 4,
 		BeansHandle: 5,
 	}
 	m := NewMachine(c)
-	// TODO
-	t.Errorf("%v", m)
+
+	if m.ready != false {
+		t.Errorf("wrong NewMachineMethod, m.ready")
+	}
+
+	for _, l := range m.lamps {
+		if l == nil || l.on != false {
+			t.Errorf("wrong lamps configured")
+		}
+	}
+
+	// tanks
+
+	wtPtr, ok := m.tanks[waterTankKey].(*waterTank)
+	if ok != true && wtPtr.water != c.Water {
+		t.Errorf("wrong Water Tank configured, %t, %v", ok, wtPtr)
+	}
+
+	btPtr, ok := m.tanks[beansTankKey].(*beansTank)
+	if ok != true && btPtr.beans != c.Beans {
+		t.Errorf("wrong Beans Tank configured, %t, %v", ok, btPtr)
+	}
+
+	gtPtr, ok := m.tanks[grindTankKey].(*grindTank)
+	if ok != true && gtPtr.grind != c.Grind {
+		t.Errorf("wrong Gring Tank configured, %t, %v", ok, btPtr)
+	}
+
+	// handles
+	bh, ok := m.handles[beansHandleKey].(*circullarHandle)
+	if ok != true && bh.value != c.BeansHandle {
+		t.Errorf("wrong handle configured for Beans")
+	}
+
+	wh, ok := m.handles[waterHandleKey].(*circullarHandle)
+	if ok != true && wh.value != c.WaterHandle {
+		t.Errorf("wrong handle configured for Water")
+	}
 }
 
 func TestOnMachineChecksDone(t *testing.T) {
@@ -151,7 +205,15 @@ func TestOnMachineChecksDone(t *testing.T) {
 
 	m.On()
 
-	// TODO
+	if m.ready != true {
+		t.Errorf("wrong On method on ready sign")
+	}
+
+	for _, l := range m.lamps {
+		if l.on != false {
+			t.Errorf("wrong On methond on lamps")
+		}
+	}
 }
 
 func TestOnMachineChecksDoneLampsOn(t *testing.T) {
@@ -166,20 +228,74 @@ func TestOnMachineChecksDoneLampsOn(t *testing.T) {
 
 	m.On()
 
-	// TODO
+	if m.ready != false {
+		t.Errorf("wrong On method on ready sign")
+	}
+
+	for _, l := range m.lamps {
+		if l.on != true {
+			t.Errorf("wrong On methond on lamps")
+		}
+	}
+}
+
+func TestOnMachineChecksDoneLampsPartial(t *testing.T) {
+	c = Config{
+		Water:       50,
+		Beans:       50,
+		Grind:       110,
+		WaterHandle: 5,
+		BeansHandle: 5,
+	}
+	m := NewMachine(c)
+
+	m.On()
+
+	if m.ready != false {
+		t.Errorf("wrong On method on ready sign")
+	}
+
+	for _, l := range m.lamps[1:] {
+		if l.on != false {
+			t.Errorf("wrong On methond on lamps")
+		}
+	}
+
+	if m.lamps[0].on != true {
+		t.Errorf("wrong On methond on lamps (2) grind lamp")
+	}
 }
 
 func TestMakeEspresso(t *testing.T) {
 	c = Config{
-		Water: 50,
-		Beans: 50,
-		Grind: 50,
+		Water:       50,
+		Beans:       50,
+		Grind:       50,
+		WaterHandle: 7,
+		BeansHandle: 7,
 	}
 
 	m := NewMachine(c)
 	m.On()
 	coffee := m.Espresso()
-	if coffee.String() != "b: 50, w: 50, Espresso coffee" {
-		t.Errorf("method Espresso not works")
+	if coffee != nil && coffee.String() != "b: 7, w: 7, name: Espresso coffee" {
+		t.Errorf("method Espresso not works: %v", coffee)
+	}
+}
+
+func TestMakeLungo(t *testing.T) {
+	c = Config{
+		Water:       50,
+		Beans:       50,
+		Grind:       50,
+		WaterHandle: 7,
+		BeansHandle: 7,
+	}
+
+	m := NewMachine(c)
+	m.On()
+	coffee := m.Lungo()
+	if coffee != nil && coffee.String() != "b: 7, w: 14, name: Lungo coffee" {
+		t.Errorf("method Espresso not works: %v", coffee)
 	}
 }

@@ -131,7 +131,7 @@ func NewMachine(c Config) *Machine {
 func (m *Machine) On() {
 	var ready bool = true
 	for _, d := range m.tanks {
-		ready = ready && d.Check()
+		ready = d.Check() && ready
 	}
 	m.ready = ready
 }
@@ -159,38 +159,55 @@ func (m *Machine) makeCoffee(espressoOrLungo int) *Coffee {
 	}
 
 	// TODO bug here
-	var beans int = m.handles[beansHandleKey].Get() * espressoOrLungo
-	var water int = m.handles[waterHandleKey].Get()
+	var beans int = m.handles[beansHandleKey].Get()
+	var water int = m.handles[waterHandleKey].Get() * espressoOrLungo
 
 	m.ready = false
 	isReady := make(chan bool, len(m.tanks))
 	go func() {
-		m.tanks[beansTankKey].Do(beans)
+		err := m.tanks[beansTankKey].Do(beans)
+		if err != nil {
+			isReady <- false
+			return
+		}
 		isReady <- true
 	}()
 	go func() {
-		m.tanks[waterTankKey].Do(water)
+		err := m.tanks[waterTankKey].Do(water)
+		if err != nil {
+			isReady <- false
+			return
+		}
 		isReady <- true
 	}()
 	// defer reverse order
 	defer func() {
 		var flag bool
 		flag = <-isReady
-		flag = <-isReady
-		flag = <-isReady
+		flag = <-isReady && flag
+		flag = <-isReady && flag
 		if flag == true {
 			m.On()
 		}
 	}()
 	defer func() {
-		go m.tanks[grindTankKey].Do(beans)
+		err := m.tanks[grindTankKey].Do(beans)
+		if err != nil {
+			isReady <- false
+			return
+		}
 		isReady <- true
 	}()
+
+	name := "Espresso"
+	if espressoOrLungo != 1 {
+		name = "Lungo"
+	}
 
 	return &Coffee{
 		Beans: beans,
 		Water: water,
-		Name:  "espresso",
+		Name:  name,
 	}
 }
 
