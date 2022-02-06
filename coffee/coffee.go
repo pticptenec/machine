@@ -107,7 +107,7 @@ func NewErrTank(s string) ErrTank {
 
 func NewMachine(c Config) *Machine {
 
-	lamps := [...]*lamp{&lamp{}, &lamp{}, &lamp{}}
+	lamps := [...]*lamp{{}, {}, {}}
 
 	tanks := map[int]doesAction{
 		grindTankKey: &grindTank{lamp: lamps[0], grind: c.Grind},
@@ -213,7 +213,7 @@ func (ch circullarHandle) Get() int {
 const GrindTankMax = 100
 
 func (gt grindTank) Check() bool {
-	if gt.grind > GrindTankMax {
+	if gt.grind >= GrindTankMax {
 		gt.lamp.On()
 		return false
 	}
@@ -234,7 +234,7 @@ func (gt grindTank) Do(grind int) error {
 const BeansTankMin = 10
 
 func (bt beansTank) Check() bool {
-	if bt.beans < BeansTankMin {
+	if bt.beans <= BeansTankMin {
 		bt.lamp.On()
 		return false
 	}
@@ -255,7 +255,7 @@ func (bt beansTank) Do(quantity int) error {
 const WaterTankMin = 10
 
 func (wt waterTank) Check() bool {
-	if wt.water < WaterTankMin {
+	if wt.water <= WaterTankMin {
 		wt.lamp.On()
 		return false
 	}
