@@ -299,3 +299,28 @@ func TestMakeLungo(t *testing.T) {
 		t.Errorf("method Lungo not works: %v", coffee)
 	}
 }
+
+func TestMakeTriple(t *testing.T) {
+	c = Config{
+		Water:       99,
+		Beans:       99,
+		Grind:       1,
+		WaterHandle: 5,
+		BeansHandle: 5,
+	}
+
+	m := NewMachine(c)
+	m.On()
+	lungos := [3]*Coffee{m.Lungo(), m.Lungo(), m.Lungo()}
+	espressos := [3]*Coffee{m.Espresso(), m.Espresso(), m.Espresso()}
+	for _, l := range lungos {
+		if l != nil && l.String() != "b: 5, w: 10, name: Lungo coffee" {
+			t.Errorf("method Lungo not works: %v", l)
+		}
+	}
+	for _, e := range espressos {
+		if e != nil && e.String() != "b: 5, w: 5, name: Espresso coffee" {
+			t.Errorf("method Lungo not works: %v", e)
+		}
+	}
+}
