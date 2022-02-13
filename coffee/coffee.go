@@ -1,6 +1,9 @@
 package coffee
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // 1. interfaces
 // 2. structs
@@ -209,6 +212,20 @@ func (m *Machine) makeCoffee(espressoOrLungo int) *Coffee {
 		Water: water,
 		Name:  name,
 	}
+}
+
+func (m *Machine) Status() string {
+	res := []string{}
+	prefixes := [...]string{"g: ", "b: ", "w: "}
+	for i, l := range m.lamps {
+		if l.on == true {
+			res = append(res, prefixes[i]+"on; ")
+		} else {
+			res = append(res, prefixes[i]+"off; ")
+		}
+	}
+	status := strings.Join(res, "")
+	return status[:len(status)-len(" ")]
 }
 
 // 4.1 handle

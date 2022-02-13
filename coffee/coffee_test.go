@@ -324,3 +324,20 @@ func TestMakeTriple(t *testing.T) {
 		}
 	}
 }
+
+func TestMachineLamps(t *testing.T) {
+	c = Config{
+		Water:       5,
+		Beans:       99,
+		Grind:       1,
+		WaterHandle: 5,
+		BeansHandle: 5,
+	}
+
+	m := NewMachine(c)
+	m.On()
+	stat := m.Status()
+	if stat != "g: off; b: off; w: on;" {
+		t.Errorf("method Status on Machine not work: [%s]", stat)
+	}
+}
