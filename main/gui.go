@@ -8,6 +8,65 @@ import (
 	"github.com/jroimartin/gocui"
 )
 
+type Element struct {
+	x, y int
+	body string
+}
+
+type Layout interface {
+	AddCenter(e *Element)
+	AddNext(e *Element)
+	AddNewLine(E *Element)
+}
+
+type ElementId string
+type Pair struct{ x, y int }
+
+type LineLayout struct {
+	*gocui.Gui
+	elements      map[ElementId]Pair
+	elementsOrder []ElementId
+}
+
+func NewElement(body string) *Element {
+	lines := strings.Split(body, "\n")
+	maxLen := 0
+	for _, l := range lines {
+		curLen := len(l)
+		if maxLen < curLen {
+			maxLen = curLen
+		}
+	}
+
+	e := new(Element)
+	e.body = body
+	e.x = maxLen + 2
+	e.y = len(lines) + 2
+	return e
+}
+
+func NewLineLayout() *LineLayout {
+	g, err := gocui.NewGui(gocui.OutputNormal)
+	if err != nil {
+		log.Panicln(err)
+	}
+	l := new(LineLayout)
+	l.Gui = g
+	l.elementsOrder = make([]ElementId, 0)
+	l.elements = make(map[ElementId]Pair)
+	return l
+}
+
+func (l *LineLayout) AddCenter(e *Element) {
+	var last *Element
+	lastI := len(l.elements)
+	if lastI == 0 {
+		last = nil
+	}
+	last = l.elements[len(l.elements)-1]
+	curX, curY := last.x, last.y
+}
+
 type HeaderWidget struct {
 	name string
 	x, y int
