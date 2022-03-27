@@ -8,65 +8,6 @@ import (
 	"github.com/jroimartin/gocui"
 )
 
-type Element struct {
-	x, y int
-	body string
-}
-
-type Layout interface {
-	AddCenter(e *Element)
-	AddNext(e *Element)
-	AddNewLine(E *Element)
-}
-
-type ElementId string
-type Pair struct{ x, y int }
-
-type LineLayout struct {
-	*gocui.Gui
-	elements      map[ElementId]Pair
-	elementsOrder []ElementId
-}
-
-func NewElement(body string) *Element {
-	lines := strings.Split(body, "\n")
-	maxLen := 0
-	for _, l := range lines {
-		curLen := len(l)
-		if maxLen < curLen {
-			maxLen = curLen
-		}
-	}
-
-	e := new(Element)
-	e.body = body
-	e.x = maxLen + 2
-	e.y = len(lines) + 2
-	return e
-}
-
-func NewLineLayout() *LineLayout {
-	g, err := gocui.NewGui(gocui.OutputNormal)
-	if err != nil {
-		log.Panicln(err)
-	}
-	l := new(LineLayout)
-	l.Gui = g
-	l.elementsOrder = make([]ElementId, 0)
-	l.elements = make(map[ElementId]Pair)
-	return l
-}
-
-func (l *LineLayout) AddCenter(e *Element) {
-	var last *Element
-	lastI := len(l.elements)
-	if lastI == 0 {
-		last = nil
-	}
-	last = l.elements[len(l.elements)-1]
-	curX, curY := last.x, last.y
-}
-
 type HeaderWidget struct {
 	name string
 	x, y int
@@ -346,6 +287,101 @@ func (sw *StatusWidget) Layout(g *gocui.Gui) error {
 	return nil
 }
 
+type Component struct {
+	Name           string
+	body           string
+	startX, startY int
+	lastX, lastY   int
+	handler        gocui.ManagerFunc
+	layout         *LayoutManager
+}
+
+func NewComponent(name, body string, layout *LayoutManager) *Component {
+	c := &Component{
+		Name:    name,
+		body:    body,
+		handler: nil,
+		layout:  layout,
+	}
+}
+
+func (c *Component) Layout(g *gocui.Gui) error {
+	views := g.Views()
+	var viewName string
+	if len(views) > 1 {
+		viewName = views[len(views)-1].Name()
+	}
+
+	x1, y1 := c.layout.Size(viewName)
+	x2, y2 := c.Size()
+	v, err := g.SetView(c.Name, x1, y1, x1+x2, y1+y2)
+	v.Title = "status:"
+	if err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		fmt.Fprint(v, c.body)
+	}
+	return nil
+}
+
+func (c *Component) Size() (int, int) {
+	lines := strings.Split(c.body, "\n")
+	height := len(lines) + 1
+	width := -1
+	for _, line := range lines {
+		cur := len(line)
+		if cur > width {
+			width = cur
+		}
+	}
+	return width, height
+}
+
+func (c *Component) SetPos(x, y int) {
+	c.startX = x
+	c.startY = y
+}
+
+type LayoutManager struct {
+	names     []string
+	positions map[string][2]int
+}
+
+func (l *LayoutManager) Add(c *Component, pos int) {
+	if l.names == nil {
+		l.names = make([]string, 0)
+		l.positions = make(map[string][2]int, 0)
+	}
+	var last string
+	if len(l.names) > 0 {
+		last = l.names[len(l.names)-1]
+	}
+
+	l.names = append(l.names, c.Name)
+	lastPos := l.positions[last]
+	gapNewLine := 2
+	x := lastPos[0]
+	y := lastPos[1] + gapNewLine
+	sizeX, sizeY := c.Size()
+	l.positions[c.Name] = [2]int{x + sizeX, y + sizeY}
+	c.SetPos(x, y)
+}
+
+func (l *LayoutManager) Size(prevName string) (int, int) {
+	if l.names == nil {
+		return 1, 1
+	}
+	var prev string
+	for _, name := range l.names {
+		if name == prevName {
+			prev = name
+		}
+	}
+	pos := l.positions[prev]
+	return pos[0], pos[1]
+}
+
 func main() {
 	g, err := gocui.NewGui(gocui.OutputNormal)
 	if err != nil {
@@ -356,16 +392,30 @@ func main() {
 	g.Highlight = true
 	g.SelFgColor = gocui.ColorRed
 
-	header := NewHeaderWidget(1, 1)
-	descr := NewDescriptionWidget(1, 4)
-	status := NewStatusWidget(27, 4)
-	water := NewWaterWidget(1, 10, nil)
-	beans := NewBeansWidget(7, 10, nil)
-	espresso := NewEspressoWidget(14, 10)
-	lungo := NewLungoWidget(24, 10)
-	off := NewOffWidget(31, 10, quit)
-
-	g.SetManager(header, descr, status, beans, water, espresso, lungo, off)
+	// header := NewHeaderWidget(1, 1)
+	// descr := NewDescriptionWidget(1, 4)
+	// status := NewStatusWidget(27, 4)
+	// water := NewWaterWidget(1, 10, nil)
+	// beans := NewBeansWidget(7, 10, nil)
+	// espresso := NewEspressoWidget(14, 10)
+	// lungo := NewLungoWidget(24, 10)
+	// off := NewOffWidget(31, 10, quit)
+	layout := new(LayoutManager)
+	header := NewComponent(
+		"header", strings.ToUpper("Office Coffee Machine"),
+		layout,
+	)
+	descr := NewComponent("descr",
+		`Tab: move betwen buttons
+Enter: push button
+Num Cell: enter 1-10
+^C, Exit Btn: Exit`,
+		layout,
+	)
+	off := NewComponent("off", "Off", layout)
+	fmt.Println(layout.positions)
+	g.SetManager(header, descr, off)
+	// g.SetManager(header, descr, status, beans, water, espresso, lungo, off)
 
 	if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
 		log.Panicln(err)
