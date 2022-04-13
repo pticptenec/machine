@@ -161,7 +161,6 @@ func (m *Machine) makeCoffee(espressoOrLungo int) *Coffee {
 		return nil
 	}
 
-	// TODO bug here
 	var beans int = m.handles[beansHandleKey].Get()
 	var water int = m.handles[waterHandleKey].Get() * espressoOrLungo
 
