@@ -1,12 +1,153 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"strings"
 
 	"github.com/jroimartin/gocui"
 )
+
+const (
+	NEWLINE = iota
+	NEXT
+)
+
+type LayoutManager struct {
+	names     []string
+	positions map[string][2]int
+}
+
+func NewLayoutManager() *LayoutManager {
+	names := make([]string, 0)
+	positions := make(map[string][2]int, 0)
+	return &LayoutManager{names, positions}
+}
+
+func (l *LayoutManager) Add(c *Component, position int) {
+	var err error
+	if position == NEWLINE {
+		l.addNewLine(c)
+	} else if position == NEXT {
+		err = l.addNext(c)
+	}
+	if err != nil {
+		l.addNewLine(c)
+	}
+}
+
+func (l *LayoutManager) addNewLine(c *Component) {
+	x := 1
+	var y int
+	w, h := c.Size()
+	if len(l.names) == 0 {
+		y = 1
+		l.names = append(l.names, c.Name)
+		l.positions[c.Name] = [2]int{x + w, y + h}
+		c.SetStartPos(x, y)
+		c.SetEndPos(x+w, y+h)
+		return
+	} else {
+		last := l.names[len(l.names)-1]
+		newLineSize := 1
+		y = l.positions[last][1] + newLineSize
+	}
+
+	l.names = append(l.names, c.Name)
+	l.positions[c.Name] = [2]int{x + w, y + h}
+	c.SetStartPos(x, y)
+	c.SetEndPos(x+w, y+h)
+}
+
+func (l *LayoutManager) addNext(c *Component) error {
+	if len(l.names) == 0 {
+		return errors.New("no components yet")
+	}
+
+	last := l.names[len(l.names)-1]
+	x, y := l.positions[last][0], l.positions[last][1]
+	w, h := c.Size()
+	c.SetStartPos(x+1, y-h)
+	l.names = append(l.names, c.Name)
+	l.positions[c.Name] = [2]int{x + w + 1, y}
+	newColGap := 1
+	c.SetEndPos(x+w+newColGap, y)
+	return nil
+}
+
+type Component struct {
+	Name           string
+	Title          string
+	body           string
+	startX, startY int
+	lastX, lastY   int
+	handler        gocui.ManagerFunc
+	layout         *LayoutManager
+}
+
+func NewComponent(name, body, title string, layout *LayoutManager, pos int) *Component {
+	c := &Component{
+		Name:    name,
+		body:    body,
+		Title:   title,
+		handler: nil,
+		layout:  layout,
+	}
+
+	layout.Add(c, pos)
+	return c
+}
+
+func (c *Component) Layout(g *gocui.Gui) error {
+	v, err := g.SetView(c.Name, c.startX, c.startY, c.lastX, c.lastY)
+	if c.Title != "" {
+		v.Title = c.Title
+	}
+	if err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		fmt.Fprint(v, c.body)
+	}
+	return nil
+}
+
+func (c *Component) Size() (int, int) {
+	lines := strings.Split(c.body, "\n")
+	height := len(lines) + 1
+	width := -1
+	for _, line := range lines {
+		cur := len(line)
+		if cur > width {
+			width = cur
+		}
+	}
+	width += 1
+	return width, height
+}
+
+func (c *Component) SetStartPos(x, y int) {
+	c.startX = x
+	c.startY = y
+}
+
+func (c *Component) SetEndPos(x, y int) {
+	c.lastX = x
+	c.lastY = y
+}
+
+func (sw *StatusWidget) Layout(g *gocui.Gui) error {
+	v, err := g.SetView(sw.name, sw.x, sw.y, sw.x+sw.w, sw.y+sw.h)
+	v.Title = "status:"
+	if err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		fmt.Fprint(v, sw.body)
+	}
+	return nil
+}
 
 type HeaderWidget struct {
 	name string
@@ -293,22 +434,26 @@ func main() {
 	// espresso := NewEspressoWidget(14, 10)
 	// lungo := NewLungoWidget(24, 10)
 	// off := NewOffWidget(31, 10, quit)
-	// layout := new(LayoutManager)
-	// header := NewComponent(
-	// 	"header", strings.ToUpper("Office Coffee Machine"),
-	// 	layout,
-	// )
-	// 	descr := NewComponent("descr",
-	// 		`Tab: move betwen buttons
-	// Enter: push button
-	// Num Cell: enter 1-10
-	// ^C, Exit Btn: Exit`,
-	// 		layout,
-	// 	)
-	// off := NewComponent("off", "Off", layout)
+	lm := NewLayoutManager()
+	header := NewComponent(
+		"header", strings.ToUpper("Office Coffee Machine"), "",
+		lm, NEWLINE,
+	)
+	descr := NewComponent("descr",
+		`Tab: move betwen buttons
+	Enter: push button
+	Num Cell: enter 1-10
+	^C, Exit Btn: Exit`, "",
+		lm, NEWLINE,
+	)
+	status := NewComponent("status", "make a coffee", "status", lm, NEXT)
+	water := NewComponent("water", "001", "w:", lm, NEWLINE)
+	beans := NewComponent("beans", "001", "b:", lm, NEXT)
+	espresso := NewComponent("espresso", "Espresso", "", lm, NEXT)
+	lungo := NewComponent("lungo", "Lungo", "", lm, NEXT)
+	off := NewComponent("off", "Off", "", lm, NEXT)
 
-	// g.SetManager(header) //, descr, off)
-	// g.SetManager(header, descr, status, beans, water, espresso, lungo, off)
+	g.SetManager(header, descr, status, water, beans, espresso, lungo, off)
 
 	if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
 		log.Panicln(err)
